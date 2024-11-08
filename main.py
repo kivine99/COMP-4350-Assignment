@@ -1,5 +1,7 @@
 import click
 import requests
+import os
+import json
 
 BASE_URL = "http://api.combatcritters.ca:4000"
 
@@ -39,6 +41,46 @@ def login(username, password):
                 click.echo("Login failed.")
         else:
             click.echo(f"{response.status_code}: Login failed. {response.text}")
+    
+    except requests.RequestException as error:
+        click.echo(f"Error: {error}")
+
+
+
+"""Command to fetch packs in the user's inventory"""
+@cli.command(help="Fetches the packs in your inventory. Must be logged in.")
+def get_packs():
+    # Check if the user's logged in (sort of)
+    if not os.path.exists("session_cookie.txt") or not os.path.exists("user_id.txt"):
+        click.echo("You must log in first.")
+        return
+    
+    # Grab the session cookie
+    with open("session_cookie.txt", "r") as cookie_file:
+        session_cookie = cookie_file.read().strip()
+    #Grab the user's ID
+    with open("user_id.txt", "r") as user_id_file:
+        user_id = user_id_file.read().strip()
+    
+    packs_url = f"{BASE_URL}/users/{user_id}/packs"
+    
+    headers = {
+        "Cookie": f"JSESSIONID={session_cookie}",
+        "Accept": "application/json"
+    }
+    
+    try:
+        response = requests.get(packs_url, headers=headers)
+        
+        if response.status_code == 200:
+            packs = response.json()
+            if len(packs) > 0:
+                click.echo("User's Packs:")
+                click.echo(json.dumps(packs, indent=4)) 
+            else:
+                click.echo("You have no packs.")
+        else:
+            click.echo(f"{response.status_code}: Failed to fetch packs. {response.text}")
     
     except requests.RequestException as error:
         click.echo(f"Error: {error}")
